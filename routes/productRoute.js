@@ -24,7 +24,7 @@ productRouter.get('/category', getProductsByCategory);
 productRouter.get('/featured', getFeaturedProducts);
 productRouter.get('/search', searchProducts);
 productRouter.get('/latest-images', getLatestImages);
-productRouter.get('/page-products', getPageProducts);  // NEW
+productRouter.get('/page-products', getPageProducts);
 
 // Admin routes
 productRouter.post(

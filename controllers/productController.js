@@ -1,4 +1,4 @@
-// controllers/productController.js - UPDATED
+// controllers/productController.js - UPDATED WITH BRIDAL SET
 import productModel from "../models/productModel.js";
 import Newsletter from "../models/Newsletter.js";
 import nodemailer from "nodemailer";
@@ -65,7 +65,9 @@ var sendNewProductEmails = async function(product) {
     var productUrl = process.env.FRONTEND_URL + '/product/' + productId;
     var imageUrl = product.images && product.images[0] ? product.images[0] : '';
     var priceFormatted = product.price ? product.price.toLocaleString() : '0';
-    var comparePriceFormatted = product.comparePrice ? product.comparePrice.toLocaleString() : '0';
+    var comparePriceFormatted = product.comparePrice 
+      ? product.comparePrice.toLocaleString() 
+      : '0';
 
     var htmlContent = '<!DOCTYPE html><html><body style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); border-radius: 15px; overflow: hidden;"><div style="background: linear-gradient(135deg, #d4af37 0%, #f4e5c2 50%, #d4af37 100%); padding: 30px; text-align: center;"><h1 style="color: #1a1a1a; margin: 0; font-size: 28px;">NEW ARRIVAL</h1></div><div style="padding: 30px; color: #f4e5c2;">';
     
@@ -118,7 +120,7 @@ var sendNewProductEmails = async function(product) {
   }
 };
 
-// Add Product
+// ==================== ADD PRODUCT ====================
 var addProduct = async function(req, res) {
   try {
     console.log('=== ADD PRODUCT ===');
@@ -151,6 +153,7 @@ var addProduct = async function(req, res) {
     var showInBangles = req.body.showInBangles;
     var showInUnder1000 = req.body.showInUnder1000;
     var showInKundan = req.body.showInKundan;
+    var showInBridalSet = req.body.showInBridalSet;
 
     // Collect uploaded files
     var imageFiles = [];
@@ -164,14 +167,20 @@ var addProduct = async function(req, res) {
     }
 
     if (imageFiles.length === 0) {
-      return res.status(400).json({ success: false, message: "At least one image is required" });
+      return res.status(400).json({ 
+        success: false, 
+        message: "At least one image is required" 
+      });
     }
 
     // Upload images to Cloudinary
     var uploadedImages = [];
     for (var j = 0; j < imageFiles.length; j++) {
       try {
-        var result = await uploadToCloudinary(imageFiles[j].path, 'rb-jewellery/products');
+        var result = await uploadToCloudinary(
+          imageFiles[j].path, 
+          'rb-jewellery/products'
+        );
         if (result && result.url) {
           uploadedImages.push(result.url);
           console.log('Uploaded image:', result.url);
@@ -184,7 +193,10 @@ var addProduct = async function(req, res) {
     cleanTempFiles(req.files);
 
     if (uploadedImages.length === 0) {
-      return res.status(400).json({ success: false, message: "Failed to upload images" });
+      return res.status(400).json({ 
+        success: false, 
+        message: "Failed to upload images" 
+      });
     }
 
     // Parse JSON fields safely
@@ -210,7 +222,11 @@ var addProduct = async function(req, res) {
 
     if (longDescription) {
       if (typeof longDescription === 'string') {
-        try { parsedLongDescription = JSON.parse(longDescription); } catch (e) { parsedLongDescription = {}; }
+        try { 
+          parsedLongDescription = JSON.parse(longDescription); 
+        } catch (e) { 
+          parsedLongDescription = {}; 
+        }
       } else if (typeof longDescription === 'object') {
         parsedLongDescription = longDescription;
       }
@@ -250,13 +266,17 @@ var addProduct = async function(req, res) {
       showInNecklaces: showInNecklaces === "true" || showInNecklaces === true,
       showInBangles: showInBangles === "true" || showInBangles === true,
       showInUnder1000: showInUnder1000 === "true" || showInUnder1000 === true,
-      showInKundan: showInKundan === "true" || showInKundan === true
+      showInKundan: showInKundan === "true" || showInKundan === true,
+      showInBridalSet: showInBridalSet === "true" || showInBridalSet === true
     };
 
     var product = await productModel.create(productData);
 
     if (!product) {
-      return res.status(500).json({ success: false, message: "Failed to create product" });
+      return res.status(500).json({ 
+        success: false, 
+        message: "Failed to create product" 
+      });
     }
 
     console.log('Product created:', product.id || product._id);
@@ -278,7 +298,7 @@ var addProduct = async function(req, res) {
   }
 };
 
-// Update Product
+// ==================== UPDATE PRODUCT ====================
 var updateProduct = async function(req, res) {
   try {
     var id = req.params.id;
@@ -287,16 +307,17 @@ var updateProduct = async function(req, res) {
     console.log('Body keys:', Object.keys(req.body));
     console.log('Files:', req.files ? Object.keys(req.files) : 'none');
 
-    // Find existing product
     var existingProduct = await productModel.findById(id);
     if (!existingProduct) {
       cleanTempFiles(req.files);
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res.status(404).json({ 
+        success: false, 
+        message: "Product not found" 
+      });
     }
 
     console.log('Existing product images:', existingProduct.images);
 
-    // Parse incoming data
     var updateData = {};
 
     // Basic fields
@@ -311,7 +332,9 @@ var updateProduct = async function(req, res) {
     if (req.body.stoneType !== undefined) updateData.stoneType = req.body.stoneType;
     if (req.body.stoneColor !== undefined) updateData.stoneColor = req.body.stoneColor;
     if (req.body.sku !== undefined) updateData.sku = req.body.sku;
-    if (req.body.stockQuantity !== undefined) updateData.stockQuantity = Number(req.body.stockQuantity) || 0;
+    if (req.body.stockQuantity !== undefined) {
+      updateData.stockQuantity = Number(req.body.stockQuantity) || 0;
+    }
 
     // Boolean fields
     if (req.body.inStock !== undefined) {
@@ -329,22 +352,31 @@ var updateProduct = async function(req, res) {
     
     // Page visibility fields
     if (req.body.showInNecklaces !== undefined) {
-      updateData.showInNecklaces = req.body.showInNecklaces === "true" || req.body.showInNecklaces === true;
+      updateData.showInNecklaces = req.body.showInNecklaces === "true" || 
+        req.body.showInNecklaces === true;
     }
     if (req.body.showInBangles !== undefined) {
-      updateData.showInBangles = req.body.showInBangles === "true" || req.body.showInBangles === true;
+      updateData.showInBangles = req.body.showInBangles === "true" || 
+        req.body.showInBangles === true;
     }
     if (req.body.showInUnder1000 !== undefined) {
-      updateData.showInUnder1000 = req.body.showInUnder1000 === "true" || req.body.showInUnder1000 === true;
+      updateData.showInUnder1000 = req.body.showInUnder1000 === "true" || 
+        req.body.showInUnder1000 === true;
     }
     if (req.body.showInKundan !== undefined) {
-      updateData.showInKundan = req.body.showInKundan === "true" || req.body.showInKundan === true;
+      updateData.showInKundan = req.body.showInKundan === "true" || 
+        req.body.showInKundan === true;
+    }
+    if (req.body.showInBridalSet !== undefined) {
+      updateData.showInBridalSet = req.body.showInBridalSet === "true" || 
+        req.body.showInBridalSet === true;
     }
 
     // Parse JSON fields
     if (req.body.sizes) {
       if (typeof req.body.sizes === 'string') {
-        try { updateData.sizes = JSON.parse(req.body.sizes); } catch (e) { updateData.sizes = []; }
+        try { updateData.sizes = JSON.parse(req.body.sizes); } 
+        catch (e) { updateData.sizes = []; }
       } else if (Array.isArray(req.body.sizes)) {
         updateData.sizes = req.body.sizes;
       }
@@ -352,7 +384,8 @@ var updateProduct = async function(req, res) {
 
     if (req.body.colors) {
       if (typeof req.body.colors === 'string') {
-        try { updateData.colors = JSON.parse(req.body.colors); } catch (e) { updateData.colors = []; }
+        try { updateData.colors = JSON.parse(req.body.colors); } 
+        catch (e) { updateData.colors = []; }
       } else if (Array.isArray(req.body.colors)) {
         updateData.colors = req.body.colors;
       }
@@ -360,7 +393,8 @@ var updateProduct = async function(req, res) {
 
     if (req.body.longDescription) {
       if (typeof req.body.longDescription === 'string') {
-        try { updateData.longDescription = JSON.parse(req.body.longDescription); } catch (e) { updateData.longDescription = {}; }
+        try { updateData.longDescription = JSON.parse(req.body.longDescription); } 
+        catch (e) { updateData.longDescription = {}; }
       } else if (typeof req.body.longDescription === 'object') {
         updateData.longDescription = req.body.longDescription;
       }
@@ -393,7 +427,6 @@ var updateProduct = async function(req, res) {
     }
 
     var imagesToDelete = [];
-
     var hasNewFiles = req.files && Object.keys(req.files).length > 0;
     
     if (hasNewFiles) {
@@ -410,7 +443,10 @@ var updateProduct = async function(req, res) {
           }
           
           try {
-            var result = await uploadToCloudinary(req.files[key][0].path, 'rb-jewellery/products');
+            var result = await uploadToCloudinary(
+              req.files[key][0].path, 
+              'rb-jewellery/products'
+            );
             if (result && result.url) {
               finalImages[j] = result.url;
               console.log('Uploaded new image to slot', j, ':', result.url);
@@ -457,14 +493,20 @@ var updateProduct = async function(req, res) {
 
     console.log('Update data:', Object.keys(updateData));
     
-    var updatedProduct = await productModel.findByIdAndUpdate(id, updateData, { new: true });
+    var updatedProduct = await productModel.findByIdAndUpdate(
+      id, 
+      updateData, 
+      { new: true }
+    );
 
     if (!updatedProduct) {
-      return res.status(500).json({ success: false, message: "Failed to update product" });
+      return res.status(500).json({ 
+        success: false, 
+        message: "Failed to update product" 
+      });
     }
 
     console.log('Product updated successfully:', updatedProduct.id || updatedProduct._id);
-    console.log('Updated images:', updatedProduct.images);
 
     res.json({
       success: true,
@@ -480,7 +522,7 @@ var updateProduct = async function(req, res) {
   }
 };
 
-// List Products
+// ==================== LIST PRODUCTS ====================
 var listProducts = async function(req, res) {
   try {
     console.log('=== LIST PRODUCTS ===');
@@ -494,7 +536,7 @@ var listProducts = async function(req, res) {
   }
 };
 
-// Remove Product
+// ==================== REMOVE PRODUCT ====================
 var removeProduct = async function(req, res) {
   try {
     var productId = req.body.id;
@@ -504,11 +546,13 @@ var removeProduct = async function(req, res) {
     var product = await productModel.findById(productId);
     
     if (!product) {
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res.status(404).json({ 
+        success: false, 
+        message: "Product not found" 
+      });
     }
 
     await deleteCloudinaryImages(product.images);
-
     await productModel.findByIdAndDelete(productId);
 
     console.log('Product removed successfully');
@@ -520,7 +564,7 @@ var removeProduct = async function(req, res) {
   }
 };
 
-// Single Product
+// ==================== SINGLE PRODUCT ====================
 var singleProduct = async function(req, res) {
   try {
     var id = req.params.id;
@@ -530,7 +574,10 @@ var singleProduct = async function(req, res) {
     var product = await productModel.findById(id);
 
     if (!product) {
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res.status(404).json({ 
+        success: false, 
+        message: "Product not found" 
+      });
     }
 
     res.json({ success: true, product: product });
@@ -541,7 +588,7 @@ var singleProduct = async function(req, res) {
   }
 };
 
-// Get Products by Category
+// ==================== GET PRODUCTS BY CATEGORY ====================
 var getProductsByCategory = async function(req, res) {
   try {
     var category = req.query.category;
@@ -566,7 +613,7 @@ var getProductsByCategory = async function(req, res) {
   }
 };
 
-// Get Featured Products
+// ==================== GET FEATURED PRODUCTS ====================
 var getFeaturedProducts = async function(req, res) {
   try {
     var type = req.query.type;
@@ -588,7 +635,7 @@ var getFeaturedProducts = async function(req, res) {
   }
 };
 
-// Search Products
+// ==================== SEARCH PRODUCTS ====================
 var searchProducts = async function(req, res) {
   try {
     var q = req.query.q;
@@ -626,7 +673,7 @@ var searchProducts = async function(req, res) {
   }
 };
 
-// Get Latest Images
+// ==================== GET LATEST IMAGES ====================
 var getLatestImages = async function(req, res) {
   try {
     var limit = parseInt(req.query.limit) || 5;
@@ -648,11 +695,14 @@ var getLatestImages = async function(req, res) {
     res.json({ success: true, products: result });
   } catch (error) {
     console.error('Get latest images error:', error);
-    res.status(500).json({ success: false, message: "Failed to fetch latest images" });
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to fetch latest images" 
+    });
   }
 };
 
-// Get products for special pages
+// ==================== GET PAGE PRODUCTS ====================
 var getPageProducts = async function(req, res) {
   try {
     var page = req.query.page;
@@ -666,6 +716,8 @@ var getPageProducts = async function(req, res) {
       query.showInUnder1000 = true;
     } else if (page === 'kundan') {
       query.showInKundan = true;
+    } else if (page === 'bridalset') {
+      query.showInBridalSet = true;
     }
 
     var products = await productModel.find(query);

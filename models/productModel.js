@@ -1,4 +1,4 @@
-// models/productModel.js - UPDATED
+// models/productModel.js - UPDATED WITH BRIDAL SET
 import pool from '../config/database.js';
 
 var productModel = {
@@ -37,6 +37,7 @@ var productModel = {
     row.showInBangles = row.showInBangles === 1 || row.showInBangles === true;
     row.showInUnder1000 = row.showInUnder1000 === 1 || row.showInUnder1000 === true;
     row.showInKundan = row.showInKundan === 1 || row.showInKundan === true;
+    row.showInBridalSet = row.showInBridalSet === 1 || row.showInBridalSet === true;
     
     return row;
   },
@@ -71,20 +72,30 @@ var productModel = {
       var showInBangles = data.showInBangles === true;
       var showInUnder1000 = data.showInUnder1000 === true;
       var showInKundan = data.showInKundan === true;
+      var showInBridalSet = data.showInBridalSet === true;
 
       // Stringify JSON fields
-      var longDescStr = typeof longDescription === 'string' ? longDescription : JSON.stringify(longDescription);
-      var imagesStr = typeof images === 'string' ? images : JSON.stringify(images);
-      var sizesStr = typeof sizes === 'string' ? sizes : JSON.stringify(sizes);
-      var colorsStr = typeof colors === 'string' ? colors : JSON.stringify(colors);
+      var longDescStr = typeof longDescription === 'string' 
+        ? longDescription 
+        : JSON.stringify(longDescription);
+      var imagesStr = typeof images === 'string' 
+        ? images 
+        : JSON.stringify(images);
+      var sizesStr = typeof sizes === 'string' 
+        ? sizes 
+        : JSON.stringify(sizes);
+      var colorsStr = typeof colors === 'string' 
+        ? colors 
+        : JSON.stringify(colors);
 
       var result = await pool.query(
         `INSERT INTO products (
           name, description, longDescription, price, comparePrice, images, 
           category, subCategory, material, sizes, colors, weight, 
           stoneType, stoneColor, inStock, stockQuantity, bestseller, 
-          newArrival, featured, sku, date, showInNecklaces, showInBangles, showInUnder1000, showInKundan, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+          newArrival, featured, sku, date, showInNecklaces, showInBangles, 
+          showInUnder1000, showInKundan, showInBridalSet, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
         [
           name,
           description,
@@ -110,7 +121,8 @@ var productModel = {
           showInNecklaces ? 1 : 0,
           showInBangles ? 1 : 0,
           showInUnder1000 ? 1 : 0,
-          showInKundan ? 1 : 0
+          showInKundan ? 1 : 0,
+          showInBridalSet ? 1 : 0
         ]
       );
 
@@ -187,6 +199,9 @@ var productModel = {
       if (query.showInKundan) {
         sql += ' AND showInKundan = 1';
       }
+      if (query.showInBridalSet) {
+        sql += ' AND showInBridalSet = 1';
+      }
 
       // Handle search with $or
       if (query.$or && Array.isArray(query.$or)) {
@@ -237,7 +252,7 @@ var productModel = {
     }
   },
 
-  // Find by ID and update - FIXED
+  // Find by ID and update
   findByIdAndUpdate: async function(id, data, options) {
     if (!options) options = {};
 
@@ -251,16 +266,18 @@ var productModel = {
       var values = [];
 
       var jsonFields = ['images', 'sizes', 'colors', 'longDescription'];
-      var boolFields = ['inStock', 'bestseller', 'newArrival', 'featured', 'showInNecklaces', 'showInBangles', 'showInUnder1000', 'showInKundan'];
+      var boolFields = [
+        'inStock', 'bestseller', 'newArrival', 'featured',
+        'showInNecklaces', 'showInBangles', 'showInUnder1000',
+        'showInKundan', 'showInBridalSet'
+      ];
       var skipFields = ['id', '_id', 'created_at'];
 
       for (var key in data) {
         if (Object.prototype.hasOwnProperty.call(data, key)) {
-          // Skip certain fields
           if (skipFields.indexOf(key) !== -1) continue;
           
           var value = data[key];
-          
           if (value === undefined) continue;
 
           if (jsonFields.indexOf(key) !== -1) {
@@ -294,7 +311,6 @@ var productModel = {
       var result = await pool.query(sql, values);
       console.log('Update result:', result[0].affectedRows, 'rows affected');
 
-      // Return updated product
       return this.findById(id);
     } catch (error) {
       console.error('findByIdAndUpdate error:', error);
