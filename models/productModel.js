@@ -1,366 +1,331 @@
-// models/productModel.js - UPDATED WITH BRIDAL SET
-import pool from '../config/database.js';
+import pool from '../config/database.js'
 
 var productModel = {
-  // Safe JSON parsing helper
-  _parseJSON: function(value, fallback) {
-    if (fallback === undefined) fallback = {};
-    if (value === null || value === undefined) return fallback;
-    if (typeof value === 'object') return value;
-    if (typeof value !== 'string') return fallback;
-    try {
-      return JSON.parse(value);
-    } catch (e) {
-      console.error('JSON parse error:', e.message);
-      return fallback;
+
+  _parseJSON: function (value, fallback) {
+    if (fallback === undefined) fallback = {}
+    if (value === null || value === undefined) return fallback
+    if (Buffer.isBuffer(value)) {
+      try { return JSON.parse(value.toString()) } catch (e) { return fallback }
     }
+    if (typeof value === 'object') return value
+    if (typeof value !== 'string') return fallback
+    try { return JSON.parse(value) } catch (e) { return fallback }
   },
 
-  // Transform row to product object
-  _transformRow: function(row) {
-    if (!row) return null;
-    
-    row._id = row.id;
-    row.images = this._parseJSON(row.images, []);
-    row.sizes = this._parseJSON(row.sizes, []);
-    row.colors = this._parseJSON(row.colors, []);
-    row.longDescription = this._parseJSON(row.longDescription, {});
-    
-    // Convert tinyint to boolean
-    row.inStock = row.inStock === 1 || row.inStock === true;
-    row.bestseller = row.bestseller === 1 || row.bestseller === true;
-    row.newArrival = row.newArrival === 1 || row.newArrival === true;
-    row.featured = row.featured === 1 || row.featured === true;
-    
-    // Page visibility fields
-    row.showInNecklaces = row.showInNecklaces === 1 || row.showInNecklaces === true;
-    row.showInBangles = row.showInBangles === 1 || row.showInBangles === true;
-    row.showInUnder1000 = row.showInUnder1000 === 1 || row.showInUnder1000 === true;
-    row.showInKundan = row.showInKundan === 1 || row.showInKundan === true;
-    row.showInBridalSet = row.showInBridalSet === 1 || row.showInBridalSet === true;
-    
-    return row;
+  _toBool: function (value) {
+    if (value === null || value === undefined) return false
+    if (Buffer.isBuffer(value)) return value[0] === 1
+    if (typeof value === 'bigint') return value === BigInt(1)
+    if (typeof value === 'number') return value === 1
+    if (typeof value === 'string') return value === '1' || value === 'true'
+    if (typeof value === 'boolean') return value
+    return false
   },
 
-  // Create product
-  create: async function(data) {
+  _transformRow: function (row) {
+    if (!row) return null
+    row._id             = row.id
+    row.images          = this._parseJSON(row.images, [])
+    row.sizes           = this._parseJSON(row.sizes, [])
+    row.colors          = this._parseJSON(row.colors, [])
+    row.longDescription = this._parseJSON(row.longDescription, {})
+    row.inStock         = this._toBool(row.inStock)
+    row.bestseller      = this._toBool(row.bestseller)
+    row.newArrival      = this._toBool(row.newArrival)
+    row.featured        = this._toBool(row.featured)
+    row.showInNecklaces = this._toBool(row.showInNecklaces)
+    row.showInBangles   = this._toBool(row.showInBangles)
+    row.showInUnder1000 = this._toBool(row.showInUnder1000)
+    row.showInKundan    = this._toBool(row.showInKundan)
+    row.showInBridalSet = this._toBool(row.showInBridalSet)
+    row.price           = parseFloat(row.price)        || 0
+    row.comparePrice    = parseFloat(row.comparePrice) || 0
+    return row
+  },
+
+  create: async function (data) {
     try {
-      var name = data.name;
-      var description = data.description || '';
-      var longDescription = data.longDescription || {};
-      var price = Number(data.price) || 0;
-      var comparePrice = Number(data.comparePrice) || 0;
-      var images = data.images || [];
-      var category = data.category || '';
-      var subCategory = data.subCategory || '';
-      var material = data.material || 'Artificial Gold Plated';
-      var sizes = data.sizes || [];
-      var colors = data.colors || [];
-      var weight = data.weight || '';
-      var stoneType = data.stoneType || '';
-      var stoneColor = data.stoneColor || '';
-      var inStock = data.inStock !== false;
-      var stockQuantity = Number(data.stockQuantity) || 0;
-      var bestseller = data.bestseller === true;
-      var newArrival = data.newArrival === true;
-      var featured = data.featured === true;
-      var sku = data.sku || '';
-      var date = data.date || Date.now();
-      
-      // Page visibility fields
-      var showInNecklaces = data.showInNecklaces === true;
-      var showInBangles = data.showInBangles === true;
-      var showInUnder1000 = data.showInUnder1000 === true;
-      var showInKundan = data.showInKundan === true;
-      var showInBridalSet = data.showInBridalSet === true;
+      var imagesStr   = JSON.stringify(data.images          || [])
+      var sizesStr    = JSON.stringify(data.sizes           || [])
+      var colorsStr   = JSON.stringify(data.colors          || [])
+      var longDescStr = JSON.stringify(data.longDescription || {})
 
-      // Stringify JSON fields
-      var longDescStr = typeof longDescription === 'string' 
-        ? longDescription 
-        : JSON.stringify(longDescription);
-      var imagesStr = typeof images === 'string' 
-        ? images 
-        : JSON.stringify(images);
-      var sizesStr = typeof sizes === 'string' 
-        ? sizes 
-        : JSON.stringify(sizes);
-      var colorsStr = typeof colors === 'string' 
-        ? colors 
-        : JSON.stringify(colors);
+      var bInStock         = data.inStock         === true ? 1 : 0
+      var bBestseller      = data.bestseller      === true ? 1 : 0
+      var bNewArrival      = data.newArrival      === true ? 1 : 0
+      var bFeatured        = data.featured        === true ? 1 : 0
+      var bShowInNecklaces = data.showInNecklaces === true ? 1 : 0
+      var bShowInBangles   = data.showInBangles   === true ? 1 : 0
+      var bShowInUnder1000 = data.showInUnder1000 === true ? 1 : 0
+      var bShowInKundan    = data.showInKundan    === true ? 1 : 0
+      var bShowInBridalSet = data.showInBridalSet === true ? 1 : 0
 
       var result = await pool.query(
         `INSERT INTO products (
-          name, description, longDescription, price, comparePrice, images, 
-          category, subCategory, material, sizes, colors, weight, 
-          stoneType, stoneColor, inStock, stockQuantity, bestseller, 
-          newArrival, featured, sku, date, showInNecklaces, showInBangles, 
-          showInUnder1000, showInKundan, showInBridalSet, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+          name, description, longDescription,
+          price, comparePrice, images,
+          category, subCategory, material,
+          sizes, colors, weight, stoneType, stoneColor,
+          inStock, stockQuantity, bestseller, newArrival,
+          featured, sku, date,
+          showInNecklaces, showInBangles, showInUnder1000,
+          showInKundan, showInBridalSet,
+          created_at
+        ) VALUES (
+          ?, ?, ?,
+          ?, ?, ?,
+          ?, ?, ?,
+          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?,
+          ?, ?, ?,
+          ?, ?,
+          NOW()
+        )`,
         [
-          name,
-          description,
+          data.name        || '',
+          data.description || '',
           longDescStr,
-          price,
-          comparePrice,
+          Number(data.price)        || 0,
+          Number(data.comparePrice) || 0,
           imagesStr,
-          category,
-          subCategory,
-          material,
+          data.category    || '',
+          data.subCategory || '',
+          data.material    || 'Artificial Gold Plated',
           sizesStr,
           colorsStr,
-          weight,
-          stoneType,
-          stoneColor,
-          inStock ? 1 : 0,
-          stockQuantity,
-          bestseller ? 1 : 0,
-          newArrival ? 1 : 0,
-          featured ? 1 : 0,
-          sku,
-          date,
-          showInNecklaces ? 1 : 0,
-          showInBangles ? 1 : 0,
-          showInUnder1000 ? 1 : 0,
-          showInKundan ? 1 : 0,
-          showInBridalSet ? 1 : 0
+          data.weight    || '',
+          data.stoneType || '',
+          data.stoneColor || '',
+          bInStock,
+          Number(data.stockQuantity) || 0,
+          bBestseller,
+          bNewArrival,
+          bFeatured,
+          data.sku  || '',
+          data.date || Date.now(),
+          bShowInNecklaces,
+          bShowInBangles,
+          bShowInUnder1000,
+          bShowInKundan,
+          bShowInBridalSet,
         ]
-      );
+      )
 
-      var insertId = result[0].insertId;
-      console.log('Product created with ID:', insertId);
-      return this.findById(insertId);
+      var insertId = result[0].insertId
+      return this.findById(insertId)
     } catch (error) {
-      console.error('Create product error:', error);
-      throw error;
+      console.error('productModel.create error:', error)
+      throw error
     }
   },
 
-  // Find by ID
-  findById: async function(id) {
+  findById: async function (id) {
     try {
-      if (!id) return null;
-      
-      var result = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
-      var rows = result[0];
-
-      if (rows && rows[0]) {
-        return this._transformRow(rows[0]);
-      }
-      return null;
+      if (!id) return null
+      var result = await pool.query(
+        'SELECT * FROM products WHERE id = ?',
+        [id]
+      )
+      var rows = result[0]
+      if (rows && rows[0]) return this._transformRow(rows[0])
+      return null
     } catch (error) {
-      console.error('findById error:', error);
-      return null;
+      console.error('productModel.findById error:', error)
+      return null
     }
   },
 
-  // Find all with query
-  find: async function(query) {
-    if (!query) query = {};
-    
+  find: async function (query) {
+    if (!query) query = {}
     try {
-      var sql = 'SELECT * FROM products WHERE 1=1';
-      var params = [];
+      var sql    = 'SELECT * FROM products WHERE 1=1'
+      var params = []
 
-      if (query.category) {
-        sql += ' AND category = ?';
-        params.push(query.category);
-      }
-      if (query.subCategory) {
-        sql += ' AND subCategory = ?';
-        params.push(query.subCategory);
-      }
-      if (query.bestseller) {
-        sql += ' AND bestseller = 1';
-      }
-      if (query.newArrival) {
-        sql += ' AND newArrival = 1';
-      }
-      if (query.featured) {
-        sql += ' AND featured = 1';
-      }
-      if (query.inStock) {
-        sql += ' AND inStock = 1';
-      }
-      if (query.material) {
-        sql += ' AND material = ?';
-        params.push(query.material);
-      }
-      
-      // Page visibility filters
-      if (query.showInNecklaces) {
-        sql += ' AND showInNecklaces = 1';
-      }
-      if (query.showInBangles) {
-        sql += ' AND showInBangles = 1';
-      }
-      if (query.showInUnder1000) {
-        sql += ' AND showInUnder1000 = 1';
-      }
-      if (query.showInKundan) {
-        sql += ' AND showInKundan = 1';
-      }
-      if (query.showInBridalSet) {
-        sql += ' AND showInBridalSet = 1';
-      }
+      if (query.category)    { sql += ' AND category = ?';    params.push(query.category) }
+      if (query.subCategory) { sql += ' AND subCategory = ?'; params.push(query.subCategory) }
+      if (query.material)    { sql += ' AND material = ?';    params.push(query.material) }
 
-      // Handle search with $or
+      if (query.bestseller  === true) sql += ' AND bestseller = 1'
+      if (query.newArrival  === true) sql += ' AND newArrival = 1'
+      if (query.featured    === true) sql += ' AND featured = 1'
+      if (query.inStock     === true) sql += ' AND inStock = 1'
+
+      if (query.showInNecklaces === true) sql += ' AND showInNecklaces = 1'
+      if (query.showInBangles   === true) sql += ' AND showInBangles = 1'
+      if (query.showInUnder1000 === true) sql += ' AND showInUnder1000 = 1'
+      if (query.showInKundan    === true) sql += ' AND showInKundan = 1'
+      if (query.showInBridalSet === true) sql += ' AND showInBridalSet = 1'
+
       if (query.$or && Array.isArray(query.$or)) {
-        var orConditions = [];
+        var orParts = []
         for (var i = 0; i < query.$or.length; i++) {
-          var cond = query.$or[i];
+          var cond = query.$or[i]
           if (cond.name && cond.name.$regex) {
-            params.push('%' + cond.name.$regex + '%');
-            orConditions.push('name LIKE ?');
+            orParts.push('name LIKE ?')
+            params.push('%' + cond.name.$regex + '%')
           }
           if (cond.description && cond.description.$regex) {
-            params.push('%' + cond.description.$regex + '%');
-            orConditions.push('description LIKE ?');
+            orParts.push('description LIKE ?')
+            params.push('%' + cond.description.$regex + '%')
           }
         }
-        if (orConditions.length > 0) {
-          sql += ' AND (' + orConditions.join(' OR ') + ')';
-        }
+        if (orParts.length > 0) sql += ' AND (' + orParts.join(' OR ') + ')'
       }
 
-      // Handle price range
       if (query.price) {
-        if (query.price.$gte) {
-          sql += ' AND price >= ?';
-          params.push(query.price.$gte);
-        }
-        if (query.price.$lte) {
-          sql += ' AND price <= ?';
-          params.push(query.price.$lte);
-        }
+        if (query.price.$gte !== undefined) { sql += ' AND price >= ?'; params.push(query.price.$gte) }
+        if (query.price.$lte !== undefined) { sql += ' AND price <= ?'; params.push(query.price.$lte) }
       }
 
-      sql += ' ORDER BY created_at DESC';
+      sql += ' ORDER BY created_at DESC'
 
-      var result = await pool.query(sql, params);
-      var rows = result[0];
-      var self = this;
-
-      var products = [];
+      var result = await pool.query(sql, params)
+      var rows   = result[0]
+      var self   = this
+      var out    = []
       for (var j = 0; j < rows.length; j++) {
-        products.push(self._transformRow(rows[j]));
+        out.push(self._transformRow(rows[j]))
       }
-
-      return products;
+      return out
     } catch (error) {
-      console.error('find error:', error);
-      return [];
+      console.error('productModel.find error:', error)
+      return []
     }
   },
 
-  // Find by ID and update
-  findByIdAndUpdate: async function(id, data, options) {
-    if (!options) options = {};
-
+  findByIdAndUpdate: async function (id, data) {
     try {
-      if (!id) {
-        console.error('findByIdAndUpdate: No ID provided');
-        return null;
+      if (!id) return null
+
+      var setParts = []
+      var values   = []
+
+      // ── Text ──
+      if (data.name        !== undefined) { setParts.push('name = ?');        values.push(String(data.name        || '')) }
+      if (data.description !== undefined) { setParts.push('description = ?'); values.push(String(data.description || '')) }
+      if (data.category    !== undefined) { setParts.push('category = ?');    values.push(String(data.category    || '')) }
+      if (data.subCategory !== undefined) { setParts.push('subCategory = ?'); values.push(String(data.subCategory || '')) }
+      if (data.material    !== undefined) { setParts.push('material = ?');    values.push(String(data.material    || '')) }
+      if (data.weight      !== undefined) { setParts.push('weight = ?');      values.push(String(data.weight      || '')) }
+      if (data.stoneType   !== undefined) { setParts.push('stoneType = ?');   values.push(String(data.stoneType   || '')) }
+      if (data.stoneColor  !== undefined) { setParts.push('stoneColor = ?');  values.push(String(data.stoneColor  || '')) }
+      if (data.sku         !== undefined) { setParts.push('sku = ?');         values.push(String(data.sku         || '')) }
+
+      // ── Numbers ──
+      if (data.price         !== undefined) { setParts.push('price = ?');         values.push(Number(data.price)         || 0) }
+      if (data.comparePrice  !== undefined) { setParts.push('comparePrice = ?');  values.push(Number(data.comparePrice)  || 0) }
+      if (data.stockQuantity !== undefined) { setParts.push('stockQuantity = ?'); values.push(Number(data.stockQuantity) || 0) }
+
+      // ── JSON ──
+      if (data.images !== undefined) {
+        setParts.push('images = ?')
+        values.push(typeof data.images === 'string' ? data.images : JSON.stringify(data.images))
+      }
+      if (data.sizes !== undefined) {
+        setParts.push('sizes = ?')
+        values.push(typeof data.sizes === 'string' ? data.sizes : JSON.stringify(data.sizes))
+      }
+      if (data.colors !== undefined) {
+        setParts.push('colors = ?')
+        values.push(typeof data.colors === 'string' ? data.colors : JSON.stringify(data.colors))
+      }
+      if (data.longDescription !== undefined) {
+        setParts.push('longDescription = ?')
+        values.push(typeof data.longDescription === 'string' ? data.longDescription : JSON.stringify(data.longDescription))
       }
 
-      var fields = [];
-      var values = [];
-
-      var jsonFields = ['images', 'sizes', 'colors', 'longDescription'];
-      var boolFields = [
-        'inStock', 'bestseller', 'newArrival', 'featured',
-        'showInNecklaces', 'showInBangles', 'showInUnder1000',
-        'showInKundan', 'showInBridalSet'
-      ];
-      var skipFields = ['id', '_id', 'created_at'];
-
-      for (var key in data) {
-        if (Object.prototype.hasOwnProperty.call(data, key)) {
-          if (skipFields.indexOf(key) !== -1) continue;
-          
-          var value = data[key];
-          if (value === undefined) continue;
-
-          if (jsonFields.indexOf(key) !== -1) {
-            fields.push(key + ' = ?');
-            if (typeof value === 'string') {
-              values.push(value);
-            } else {
-              values.push(JSON.stringify(value));
-            }
-          } else if (boolFields.indexOf(key) !== -1) {
-            fields.push(key + ' = ?');
-            values.push(value ? 1 : 0);
-          } else {
-            fields.push(key + ' = ?');
-            values.push(value);
-          }
-        }
+      // ── Booleans - every field has unique variable name ──
+      if (data.inStock !== undefined) {
+        var bInStock = data.inStock === true ? 1 : 0
+        setParts.push('inStock = ?')
+        values.push(bInStock)
+      }
+      if (data.bestseller !== undefined) {
+        var bBestseller = data.bestseller === true ? 1 : 0
+        setParts.push('bestseller = ?')
+        values.push(bBestseller)
+      }
+      if (data.newArrival !== undefined) {
+        var bNewArrival = data.newArrival === true ? 1 : 0
+        setParts.push('newArrival = ?')
+        values.push(bNewArrival)
+      }
+      if (data.featured !== undefined) {
+        var bFeatured = data.featured === true ? 1 : 0
+        setParts.push('featured = ?')
+        values.push(bFeatured)
+      }
+      if (data.showInNecklaces !== undefined) {
+        var bShowInNecklaces = data.showInNecklaces === true ? 1 : 0
+        setParts.push('showInNecklaces = ?')
+        values.push(bShowInNecklaces)
+      }
+      if (data.showInBangles !== undefined) {
+        var bShowInBangles = data.showInBangles === true ? 1 : 0
+        setParts.push('showInBangles = ?')
+        values.push(bShowInBangles)
+      }
+      if (data.showInUnder1000 !== undefined) {
+        var bShowInUnder1000 = data.showInUnder1000 === true ? 1 : 0
+        setParts.push('showInUnder1000 = ?')
+        values.push(bShowInUnder1000)
+      }
+      if (data.showInKundan !== undefined) {
+        var bShowInKundan = data.showInKundan === true ? 1 : 0
+        setParts.push('showInKundan = ?')
+        values.push(bShowInKundan)
+      }
+      if (data.showInBridalSet !== undefined) {
+        var bShowInBridalSet = data.showInBridalSet === true ? 1 : 0
+        setParts.push('showInBridalSet = ?')
+        values.push(bShowInBridalSet)
       }
 
-      if (fields.length === 0) {
-        console.log('No fields to update');
-        return this.findById(id);
-      }
+      if (setParts.length === 0) return this.findById(id)
 
-      values.push(id);
-      var sql = 'UPDATE products SET ' + fields.join(', ') + ' WHERE id = ?';
-      
-      console.log('Executing update SQL:', sql);
-      console.log('Values count:', values.length);
+      values.push(Number(id))
+      var sql = 'UPDATE products SET ' + setParts.join(', ') + ' WHERE id = ?'
 
-      var result = await pool.query(sql, values);
-      console.log('Update result:', result[0].affectedRows, 'rows affected');
+      await pool.query(sql, values)
+      return this.findById(id)
 
-      return this.findById(id);
     } catch (error) {
-      console.error('findByIdAndUpdate error:', error);
-      throw error;
+      console.error('productModel.findByIdAndUpdate error:', error)
+      throw error
     }
   },
 
-  // Find by ID and delete
-  findByIdAndDelete: async function(id) {
+  findByIdAndDelete: async function (id) {
     try {
-      var product = await this.findById(id);
+      var product = await this.findById(id)
       if (product) {
-        await pool.query('DELETE FROM products WHERE id = ?', [id]);
-        console.log('Product deleted:', id);
+        await pool.query('DELETE FROM products WHERE id = ?', [id])
       }
-      return product;
+      return product
     } catch (error) {
-      console.error('findByIdAndDelete error:', error);
-      return null;
+      console.error('productModel.findByIdAndDelete error:', error)
+      return null
     }
   },
 
-  // Count documents
-  countDocuments: async function(query) {
-    if (!query) query = {};
-    
+  countDocuments: async function (query) {
+    if (!query) query = {}
     try {
-      var sql = 'SELECT COUNT(*) as count FROM products';
-      var params = [];
-      var conditions = [];
-
-      if (query.category) {
-        conditions.push('category = ?');
-        params.push(query.category);
-      }
-      if (query.inStock) {
-        conditions.push('inStock = 1');
-      }
-
-      if (conditions.length > 0) {
-        sql += ' WHERE ' + conditions.join(' AND ');
-      }
-
-      var result = await pool.query(sql, params);
-      return result[0][0].count;
+      var sql        = 'SELECT COUNT(*) as count FROM products'
+      var params     = []
+      var conditions = []
+      if (query.category)      { conditions.push('category = ?'); params.push(query.category) }
+      if (query.inStock === true) conditions.push('inStock = 1')
+      if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ')
+      var result = await pool.query(sql, params)
+      return result[0][0].count
     } catch (error) {
-      console.error('countDocuments error:', error);
-      return 0;
+      console.error('productModel.countDocuments error:', error)
+      return 0
     }
-  }
-};
+  },
+}
 
-export default productModel;
+export default productModel
