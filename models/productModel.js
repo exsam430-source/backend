@@ -39,6 +39,8 @@ var productModel = {
     row.showInUnder1000 = this._toBool(row.showInUnder1000)
     row.showInKundan    = this._toBool(row.showInKundan)
     row.showInBridalSet = this._toBool(row.showInBridalSet)
+    // ✅ NEW
+    row.showInPartyWear = this._toBool(row.showInPartyWear)
     row.price           = parseFloat(row.price)        || 0
     row.comparePrice    = parseFloat(row.comparePrice) || 0
     return row
@@ -60,6 +62,8 @@ var productModel = {
       var bShowInUnder1000 = data.showInUnder1000 === true ? 1 : 0
       var bShowInKundan    = data.showInKundan    === true ? 1 : 0
       var bShowInBridalSet = data.showInBridalSet === true ? 1 : 0
+      // ✅ NEW
+      var bShowInPartyWear = data.showInPartyWear === true ? 1 : 0
 
       var result = await pool.query(
         `INSERT INTO products (
@@ -70,7 +74,7 @@ var productModel = {
           inStock, stockQuantity, bestseller, newArrival,
           featured, sku, date,
           showInNecklaces, showInBangles, showInUnder1000,
-          showInKundan, showInBridalSet,
+          showInKundan, showInBridalSet, showInPartyWear,
           created_at
         ) VALUES (
           ?, ?, ?,
@@ -80,7 +84,7 @@ var productModel = {
           ?, ?, ?, ?,
           ?, ?, ?,
           ?, ?, ?,
-          ?, ?,
+          ?, ?, ?,
           NOW()
         )`,
         [
@@ -95,8 +99,8 @@ var productModel = {
           data.material    || 'Artificial Gold Plated',
           sizesStr,
           colorsStr,
-          data.weight    || '',
-          data.stoneType || '',
+          data.weight     || '',
+          data.stoneType  || '',
           data.stoneColor || '',
           bInStock,
           Number(data.stockQuantity) || 0,
@@ -110,6 +114,7 @@ var productModel = {
           bShowInUnder1000,
           bShowInKundan,
           bShowInBridalSet,
+          bShowInPartyWear,
         ]
       )
 
@@ -124,10 +129,7 @@ var productModel = {
   findById: async function (id) {
     try {
       if (!id) return null
-      var result = await pool.query(
-        'SELECT * FROM products WHERE id = ?',
-        [id]
-      )
+      var result = await pool.query('SELECT * FROM products WHERE id = ?', [id])
       var rows = result[0]
       if (rows && rows[0]) return this._transformRow(rows[0])
       return null
@@ -157,6 +159,8 @@ var productModel = {
       if (query.showInUnder1000 === true) sql += ' AND showInUnder1000 = 1'
       if (query.showInKundan    === true) sql += ' AND showInKundan = 1'
       if (query.showInBridalSet === true) sql += ' AND showInBridalSet = 1'
+      // ✅ NEW
+      if (query.showInPartyWear === true) sql += ' AND showInPartyWear = 1'
 
       if (query.$or && Array.isArray(query.$or)) {
         var orParts = []
@@ -202,7 +206,6 @@ var productModel = {
       var setParts = []
       var values   = []
 
-      // ── Text ──
       if (data.name        !== undefined) { setParts.push('name = ?');        values.push(String(data.name        || '')) }
       if (data.description !== undefined) { setParts.push('description = ?'); values.push(String(data.description || '')) }
       if (data.category    !== undefined) { setParts.push('category = ?');    values.push(String(data.category    || '')) }
@@ -213,12 +216,10 @@ var productModel = {
       if (data.stoneColor  !== undefined) { setParts.push('stoneColor = ?');  values.push(String(data.stoneColor  || '')) }
       if (data.sku         !== undefined) { setParts.push('sku = ?');         values.push(String(data.sku         || '')) }
 
-      // ── Numbers ──
       if (data.price         !== undefined) { setParts.push('price = ?');         values.push(Number(data.price)         || 0) }
       if (data.comparePrice  !== undefined) { setParts.push('comparePrice = ?');  values.push(Number(data.comparePrice)  || 0) }
       if (data.stockQuantity !== undefined) { setParts.push('stockQuantity = ?'); values.push(Number(data.stockQuantity) || 0) }
 
-      // ── JSON ──
       if (data.images !== undefined) {
         setParts.push('images = ?')
         values.push(typeof data.images === 'string' ? data.images : JSON.stringify(data.images))
@@ -236,7 +237,6 @@ var productModel = {
         values.push(typeof data.longDescription === 'string' ? data.longDescription : JSON.stringify(data.longDescription))
       }
 
-      // ── Booleans - every field has unique variable name ──
       if (data.inStock !== undefined) {
         var bInStock = data.inStock === true ? 1 : 0
         setParts.push('inStock = ?')
@@ -282,12 +282,17 @@ var productModel = {
         setParts.push('showInBridalSet = ?')
         values.push(bShowInBridalSet)
       }
+      // ✅ NEW
+      if (data.showInPartyWear !== undefined) {
+        var bShowInPartyWear = data.showInPartyWear === true ? 1 : 0
+        setParts.push('showInPartyWear = ?')
+        values.push(bShowInPartyWear)
+      }
 
       if (setParts.length === 0) return this.findById(id)
 
       values.push(Number(id))
       var sql = 'UPDATE products SET ' + setParts.join(', ') + ' WHERE id = ?'
-
       await pool.query(sql, values)
       return this.findById(id)
 
@@ -316,8 +321,8 @@ var productModel = {
       var sql        = 'SELECT COUNT(*) as count FROM products'
       var params     = []
       var conditions = []
-      if (query.category)      { conditions.push('category = ?'); params.push(query.category) }
-      if (query.inStock === true) conditions.push('inStock = 1')
+      if (query.category)        { conditions.push('category = ?'); params.push(query.category) }
+      if (query.inStock === true)  conditions.push('inStock = 1')
       if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ')
       var result = await pool.query(sql, params)
       return result[0][0].count

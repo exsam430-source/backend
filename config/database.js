@@ -1,7 +1,5 @@
-// config/database.js
 import mysql from 'mysql2/promise';
 
-// Create connection pool
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER,
@@ -16,7 +14,6 @@ const pool = mysql.createPool({
   charset: 'utf8mb4'
 });
 
-// Test connection
 export const testConnection = async () => {
   try {
     const connection = await pool.getConnection();
@@ -33,7 +30,6 @@ export const testConnection = async () => {
   }
 };
 
-// Initialize tables
 export const initTables = async () => {
   try {
     const connection = await pool.getConnection();
@@ -87,7 +83,7 @@ export const initTables = async () => {
         INDEX idx_email (email)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
-      // Products table
+      // Products table - ✅ showInPartyWear ADDED
       `CREATE TABLE IF NOT EXISTS products (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -109,6 +105,12 @@ export const initTables = async () => {
         bestseller BOOLEAN DEFAULT FALSE,
         newArrival BOOLEAN DEFAULT FALSE,
         featured BOOLEAN DEFAULT FALSE,
+        showInNecklaces BOOLEAN DEFAULT FALSE,
+        showInBangles BOOLEAN DEFAULT FALSE,
+        showInUnder1000 BOOLEAN DEFAULT FALSE,
+        showInKundan BOOLEAN DEFAULT FALSE,
+        showInBridalSet BOOLEAN DEFAULT FALSE,
+        showInPartyWear BOOLEAN DEFAULT FALSE,
         sku VARCHAR(100) DEFAULT '',
         rating DECIMAL(2,1) DEFAULT 0,
         reviews_count INT DEFAULT 0,
@@ -120,7 +122,7 @@ export const initTables = async () => {
         INDEX idx_featured (featured)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
-      // ✅ Cart table - ADDED
+      // Cart table
       `CREATE TABLE IF NOT EXISTS cart (
         id INT AUTO_INCREMENT PRIMARY KEY,
         userId INT NOT NULL,
@@ -275,18 +277,36 @@ export const initTables = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
     ];
 
-    // Execute all queries
     for (let i = 0; i < queries.length; i++) {
       await connection.query(queries[i]);
     }
 
     console.log('✅ All database tables created successfully!');
+
+    // ✅ Add missing columns to existing products table
+    const alterQueries = [
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInNecklaces BOOLEAN DEFAULT FALSE`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInBangles BOOLEAN DEFAULT FALSE`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInUnder1000 BOOLEAN DEFAULT FALSE`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInKundan BOOLEAN DEFAULT FALSE`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInBridalSet BOOLEAN DEFAULT FALSE`,
+      // ✅ NEW
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInPartyWear BOOLEAN DEFAULT FALSE`,
+    ];
+
+    for (let i = 0; i < alterQueries.length; i++) {
+      try {
+        await connection.query(alterQueries[i]);
+      } catch (err) {
+        if (err.code !== 'ER_DUP_FIELDNAME') {
+          console.error('Error adding column:', err.message);
+        }
+      }
+    }
+
     connection.release();
 
-    // Seed default admin
     await seedDefaultAdmin();
-
-    // Seed default settings
     await seedDefaultSettings();
 
     return true;
@@ -296,15 +316,12 @@ export const initTables = async () => {
   }
 };
 
-// Seed default admin
 const seedDefaultAdmin = async () => {
   try {
     const [rows] = await pool.query('SELECT COUNT(*) as count FROM admins');
-    
     if (rows[0].count === 0) {
       const bcrypt = await import('bcrypt');
       const hashedPassword = await bcrypt.default.hash(process.env.Admin_PASSWORD || 'admin123', 12);
-      
       await pool.query(
         'INSERT INTO admins (email, password, name, isActive) VALUES (?, ?, ?, ?)',
         [
@@ -322,7 +339,6 @@ const seedDefaultAdmin = async () => {
   }
 };
 
-// Seed default settings
 const seedDefaultSettings = async () => {
   try {
     const defaults = {
@@ -354,5 +370,4 @@ const seedDefaultSettings = async () => {
   }
 };
 
-// Export pool as default
 export default pool;

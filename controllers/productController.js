@@ -141,6 +141,8 @@ var addProduct = async function (req, res) {
       showInUnder1000: parseBool(req.body.showInUnder1000),
       showInKundan:    parseBool(req.body.showInKundan),
       showInBridalSet: parseBool(req.body.showInBridalSet),
+      // ✅ NEW
+      showInPartyWear: parseBool(req.body.showInPartyWear),
     }
 
     var product = await productModel.create(productData)
@@ -167,7 +169,6 @@ var updateProduct = async function (req, res) {
 
     var updateData = {}
 
-    // Text fields
     var textFields = [
       'name', 'description', 'category', 'subCategory',
       'material', 'weight', 'stoneType', 'stoneColor', 'sku',
@@ -176,12 +177,10 @@ var updateProduct = async function (req, res) {
       if (req.body[f] !== undefined) updateData[f] = req.body[f]
     })
 
-    // Number fields
     if (req.body.price         !== undefined) updateData.price         = Number(req.body.price)         || 0
     if (req.body.comparePrice  !== undefined) updateData.comparePrice  = Number(req.body.comparePrice)  || 0
     if (req.body.stockQuantity !== undefined) updateData.stockQuantity = Number(req.body.stockQuantity) || 0
 
-    // Boolean fields - all explicit
     if (req.body.inStock         !== undefined) updateData.inStock         = parseBool(req.body.inStock)
     if (req.body.bestseller      !== undefined) updateData.bestseller      = parseBool(req.body.bestseller)
     if (req.body.newArrival      !== undefined) updateData.newArrival      = parseBool(req.body.newArrival)
@@ -191,13 +190,13 @@ var updateProduct = async function (req, res) {
     if (req.body.showInUnder1000 !== undefined) updateData.showInUnder1000 = parseBool(req.body.showInUnder1000)
     if (req.body.showInKundan    !== undefined) updateData.showInKundan    = parseBool(req.body.showInKundan)
     if (req.body.showInBridalSet !== undefined) updateData.showInBridalSet = parseBool(req.body.showInBridalSet)
+    // ✅ NEW
+    if (req.body.showInPartyWear !== undefined) updateData.showInPartyWear = parseBool(req.body.showInPartyWear)
 
-    // JSON fields
     if (req.body.sizes)           updateData.sizes           = parseJSONField(req.body.sizes,           [])
     if (req.body.colors)          updateData.colors          = parseJSONField(req.body.colors,          [])
     if (req.body.longDescription) updateData.longDescription = parseJSONField(req.body.longDescription, {})
 
-    // Images
     var existingImagesFromFE = [null, null, null, null]
     if (req.body.existingImages) {
       var parsedImgs = parseJSONField(req.body.existingImages, [])
@@ -382,11 +381,13 @@ var getPageProducts = async function (req, res) {
     var page  = req.query.page
     var query = {}
 
-    if      (page === 'necklaces') query.showInNecklaces = true
-    else if (page === 'bangles')   query.showInBangles   = true
-    else if (page === 'under1000') query.showInUnder1000 = true
-    else if (page === 'kundan')    query.showInKundan    = true
-    else if (page === 'bridalset') query.showInBridalSet = true
+    if      (page === 'necklaces')     query.showInNecklaces = true
+    else if (page === 'bangles')       query.showInBangles   = true
+    else if (page === 'under1000')     query.showInUnder1000 = true
+    else if (page === 'kundan')        query.showInKundan    = true
+    else if (page === 'bridalset')     query.showInBridalSet = true
+    // ✅ NEW
+    else if (page === 'partywear')     query.showInPartyWear = true
 
     var products = await productModel.find(query)
     return res.json({ success: true, products: products })
