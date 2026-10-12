@@ -83,7 +83,7 @@ export const initTables = async () => {
         INDEX idx_email (email)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
-      // Products table - ✅ showInPartyWear ADDED
+      // Products table
       `CREATE TABLE IF NOT EXISTS products (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -111,6 +111,12 @@ export const initTables = async () => {
         showInKundan BOOLEAN DEFAULT FALSE,
         showInBridalSet BOOLEAN DEFAULT FALSE,
         showInPartyWear BOOLEAN DEFAULT FALSE,
+        isGoldProduct BOOLEAN DEFAULT FALSE,
+        goldKarat VARCHAR(10) DEFAULT '',
+        goldWeightGrams DECIMAL(8,3) DEFAULT 0,
+        makingCharges DECIMAL(10,2) DEFAULT 0,
+        stoneCost DECIMAL(10,2) DEFAULT 0,
+        showInGold BOOLEAN DEFAULT FALSE,
         sku VARCHAR(100) DEFAULT '',
         rating DECIMAL(2,1) DEFAULT 0,
         reviews_count INT DEFAULT 0,
@@ -119,7 +125,8 @@ export const initTables = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_category (category),
         INDEX idx_bestseller (bestseller),
-        INDEX idx_featured (featured)
+        INDEX idx_featured (featured),
+        INDEX idx_gold (isGoldProduct)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
       // Cart table
@@ -199,6 +206,8 @@ export const initTables = async () => {
         budgetMax DECIMAL(10,2) DEFAULT 0,
         size VARCHAR(50) DEFAULT '',
         materialPreference VARCHAR(100) DEFAULT 'Artificial Gold Plated',
+        goldKarat VARCHAR(10) DEFAULT '',
+        isGoldOrder BOOLEAN DEFAULT FALSE,
         requiredBy DATE,
         occasion VARCHAR(255) DEFAULT '',
         status VARCHAR(50) DEFAULT 'pending',
@@ -274,7 +283,21 @@ export const initTables = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_status (status)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+      // Gold prices table
+      `CREATE TABLE IF NOT EXISTS gold_prices (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        goldPricePerGram DECIMAL(12,2) NOT NULL DEFAULT 0,
+        goldPricePerTola DECIMAL(12,2) NOT NULL DEFAULT 0,
+        silverPricePerGram DECIMAL(12,2) NOT NULL DEFAULT 0,
+        silverPricePerTola DECIMAL(12,2) NOT NULL DEFAULT 0,
+        currency VARCHAR(10) DEFAULT 'PKR',
+        updatedBy VARCHAR(100) DEFAULT 'admin',
+        note TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     ];
 
     for (let i = 0; i < queries.length; i++) {
@@ -283,15 +306,22 @@ export const initTables = async () => {
 
     console.log('✅ All database tables created successfully!');
 
-    // ✅ Add missing columns to existing products table
+    // Add missing columns to existing tables
     const alterQueries = [
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInNecklaces BOOLEAN DEFAULT FALSE`,
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInBangles BOOLEAN DEFAULT FALSE`,
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInUnder1000 BOOLEAN DEFAULT FALSE`,
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInKundan BOOLEAN DEFAULT FALSE`,
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInBridalSet BOOLEAN DEFAULT FALSE`,
-      // ✅ NEW
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInPartyWear BOOLEAN DEFAULT FALSE`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS isGoldProduct BOOLEAN DEFAULT FALSE`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS goldKarat VARCHAR(10) DEFAULT ''`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS goldWeightGrams DECIMAL(8,3) DEFAULT 0`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS makingCharges DECIMAL(10,2) DEFAULT 0`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS stoneCost DECIMAL(10,2) DEFAULT 0`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS showInGold BOOLEAN DEFAULT FALSE`,
+      `ALTER TABLE custom_orders ADD COLUMN IF NOT EXISTS goldKarat VARCHAR(10) DEFAULT ''`,
+      `ALTER TABLE custom_orders ADD COLUMN IF NOT EXISTS isGoldOrder BOOLEAN DEFAULT FALSE`,
     ];
 
     for (let i = 0; i < alterQueries.length; i++) {
@@ -321,14 +351,16 @@ const seedDefaultAdmin = async () => {
     const [rows] = await pool.query('SELECT COUNT(*) as count FROM admins');
     if (rows[0].count === 0) {
       const bcrypt = await import('bcrypt');
-      const hashedPassword = await bcrypt.default.hash(process.env.Admin_PASSWORD || 'admin123', 12);
+      const hashedPassword = await bcrypt.default.hash(
+        process.env.Admin_PASSWORD || 'admin123', 12
+      );
       await pool.query(
         'INSERT INTO admins (email, password, name, isActive) VALUES (?, ?, ?, ?)',
         [
           process.env.Admin_EMAIL || 'admin@rbjewellery.com',
           hashedPassword,
           'Admin',
-          true
+          true,
         ]
       );
       console.log('✅ Default admin created');
@@ -342,20 +374,20 @@ const seedDefaultAdmin = async () => {
 const seedDefaultSettings = async () => {
   try {
     const defaults = {
-      whatsappNumber: process.env.WHATSAPP_NUMBER || '+923001234567',
-      easypaisaNumber: process.env.EASYPAISA_NUMBER || '03001234567',
-      easypaisaName: process.env.EASYPAISA_NAME || 'RB Jewellery',
-      bankName: process.env.BANK_NAME || 'Meezan Bank',
-      bankAccountNumber: process.env.BANK_ACCOUNT_NUMBER || '1234567890',
-      bankAccountTitle: process.env.BANK_ACCOUNT_TITLE || 'RB Jewellery',
-      bankIBAN: process.env.BANK_IBAN || 'PK00MEZN0001234567890',
-      deliveryCharges: parseInt(process.env.DELIVERY_CHARGES) || 250,
-      freeDeliveryAbove: parseInt(process.env.FREE_DELIVERY_ABOVE) || 3000,
-      currency: process.env.CURRENCY || 'Rs.',
-      storeName: process.env.STORE_NAME || 'RB Jewellery',
-      storeEmail: process.env.STORE_EMAIL || 'info@rbjewellery.com',
-      storePhone: process.env.STORE_PHONE || '+923001234567',
-      storeAddress: process.env.STORE_ADDRESS || 'Your Store Address'
+      whatsappNumber:     process.env.WHATSAPP_NUMBER      || '+923001234567',
+      easypaisaNumber:    process.env.EASYPAISA_NUMBER     || '03001234567',
+      easypaisaName:      process.env.EASYPAISA_NAME       || 'RB Jewellery',
+      bankName:           process.env.BANK_NAME            || 'Meezan Bank',
+      bankAccountNumber:  process.env.BANK_ACCOUNT_NUMBER  || '1234567890',
+      bankAccountTitle:   process.env.BANK_ACCOUNT_TITLE   || 'RB Jewellery',
+      bankIBAN:           process.env.BANK_IBAN            || 'PK00MEZN0001234567890',
+      deliveryCharges:    parseInt(process.env.DELIVERY_CHARGES)      || 250,
+      freeDeliveryAbove:  parseInt(process.env.FREE_DELIVERY_ABOVE)   || 3000,
+      currency:           process.env.CURRENCY             || 'Rs.',
+      storeName:          process.env.STORE_NAME           || 'RB Jewellery',
+      storeEmail:         process.env.STORE_EMAIL          || 'info@rbjewellery.com',
+      storePhone:         process.env.STORE_PHONE          || '+923001234567',
+      storeAddress:       process.env.STORE_ADDRESS        || 'Your Store Address',
     };
 
     for (const [key, value] of Object.entries(defaults)) {

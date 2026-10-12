@@ -39,10 +39,15 @@ var productModel = {
     row.showInUnder1000 = this._toBool(row.showInUnder1000)
     row.showInKundan    = this._toBool(row.showInKundan)
     row.showInBridalSet = this._toBool(row.showInBridalSet)
-    // ✅ NEW
     row.showInPartyWear = this._toBool(row.showInPartyWear)
-    row.price           = parseFloat(row.price)        || 0
-    row.comparePrice    = parseFloat(row.comparePrice) || 0
+    row.isGoldProduct   = this._toBool(row.isGoldProduct)
+    row.showInGold      = this._toBool(row.showInGold)
+    row.price           = parseFloat(row.price)           || 0
+    row.comparePrice    = parseFloat(row.comparePrice)    || 0
+    row.goldWeightGrams = parseFloat(row.goldWeightGrams) || 0
+    row.makingCharges   = parseFloat(row.makingCharges)   || 0
+    row.stoneCost       = parseFloat(row.stoneCost)       || 0
+    row.goldKarat       = row.goldKarat                   || ''
     return row
   },
 
@@ -62,8 +67,9 @@ var productModel = {
       var bShowInUnder1000 = data.showInUnder1000 === true ? 1 : 0
       var bShowInKundan    = data.showInKundan    === true ? 1 : 0
       var bShowInBridalSet = data.showInBridalSet === true ? 1 : 0
-      // ✅ NEW
       var bShowInPartyWear = data.showInPartyWear === true ? 1 : 0
+      var bIsGoldProduct   = data.isGoldProduct   === true ? 1 : 0
+      var bShowInGold      = data.showInGold      === true ? 1 : 0
 
       var result = await pool.query(
         `INSERT INTO products (
@@ -75,6 +81,8 @@ var productModel = {
           featured, sku, date,
           showInNecklaces, showInBangles, showInUnder1000,
           showInKundan, showInBridalSet, showInPartyWear,
+          isGoldProduct, goldKarat, goldWeightGrams,
+          makingCharges, stoneCost, showInGold,
           created_at
         ) VALUES (
           ?, ?, ?,
@@ -82,6 +90,8 @@ var productModel = {
           ?, ?, ?,
           ?, ?, ?, ?, ?,
           ?, ?, ?, ?,
+          ?, ?, ?,
+          ?, ?, ?,
           ?, ?, ?,
           ?, ?, ?,
           ?, ?, ?,
@@ -115,6 +125,12 @@ var productModel = {
           bShowInKundan,
           bShowInBridalSet,
           bShowInPartyWear,
+          bIsGoldProduct,
+          data.goldKarat || '',
+          parseFloat(data.goldWeightGrams) || 0,
+          parseFloat(data.makingCharges)   || 0,
+          parseFloat(data.stoneCost)       || 0,
+          bShowInGold,
         ]
       )
 
@@ -148,18 +164,20 @@ var productModel = {
       if (query.category)    { sql += ' AND category = ?';    params.push(query.category) }
       if (query.subCategory) { sql += ' AND subCategory = ?'; params.push(query.subCategory) }
       if (query.material)    { sql += ' AND material = ?';    params.push(query.material) }
+      if (query.goldKarat)   { sql += ' AND goldKarat = ?';   params.push(query.goldKarat) }
 
-      if (query.bestseller  === true) sql += ' AND bestseller = 1'
-      if (query.newArrival  === true) sql += ' AND newArrival = 1'
-      if (query.featured    === true) sql += ' AND featured = 1'
-      if (query.inStock     === true) sql += ' AND inStock = 1'
+      if (query.bestseller    === true) sql += ' AND bestseller = 1'
+      if (query.newArrival    === true) sql += ' AND newArrival = 1'
+      if (query.featured      === true) sql += ' AND featured = 1'
+      if (query.inStock       === true) sql += ' AND inStock = 1'
+      if (query.isGoldProduct === true) sql += ' AND isGoldProduct = 1'
+      if (query.showInGold    === true) sql += ' AND showInGold = 1'
 
       if (query.showInNecklaces === true) sql += ' AND showInNecklaces = 1'
       if (query.showInBangles   === true) sql += ' AND showInBangles = 1'
       if (query.showInUnder1000 === true) sql += ' AND showInUnder1000 = 1'
       if (query.showInKundan    === true) sql += ' AND showInKundan = 1'
       if (query.showInBridalSet === true) sql += ' AND showInBridalSet = 1'
-      // ✅ NEW
       if (query.showInPartyWear === true) sql += ' AND showInPartyWear = 1'
 
       if (query.$or && Array.isArray(query.$or)) {
@@ -215,10 +233,14 @@ var productModel = {
       if (data.stoneType   !== undefined) { setParts.push('stoneType = ?');   values.push(String(data.stoneType   || '')) }
       if (data.stoneColor  !== undefined) { setParts.push('stoneColor = ?');  values.push(String(data.stoneColor  || '')) }
       if (data.sku         !== undefined) { setParts.push('sku = ?');         values.push(String(data.sku         || '')) }
+      if (data.goldKarat   !== undefined) { setParts.push('goldKarat = ?');   values.push(String(data.goldKarat   || '')) }
 
-      if (data.price         !== undefined) { setParts.push('price = ?');         values.push(Number(data.price)         || 0) }
-      if (data.comparePrice  !== undefined) { setParts.push('comparePrice = ?');  values.push(Number(data.comparePrice)  || 0) }
-      if (data.stockQuantity !== undefined) { setParts.push('stockQuantity = ?'); values.push(Number(data.stockQuantity) || 0) }
+      if (data.price           !== undefined) { setParts.push('price = ?');           values.push(Number(data.price)           || 0) }
+      if (data.comparePrice    !== undefined) { setParts.push('comparePrice = ?');    values.push(Number(data.comparePrice)    || 0) }
+      if (data.stockQuantity   !== undefined) { setParts.push('stockQuantity = ?');   values.push(Number(data.stockQuantity)   || 0) }
+      if (data.goldWeightGrams !== undefined) { setParts.push('goldWeightGrams = ?'); values.push(parseFloat(data.goldWeightGrams) || 0) }
+      if (data.makingCharges   !== undefined) { setParts.push('makingCharges = ?');   values.push(parseFloat(data.makingCharges)   || 0) }
+      if (data.stoneCost       !== undefined) { setParts.push('stoneCost = ?');       values.push(parseFloat(data.stoneCost)       || 0) }
 
       if (data.images !== undefined) {
         setParts.push('images = ?')
@@ -237,56 +259,19 @@ var productModel = {
         values.push(typeof data.longDescription === 'string' ? data.longDescription : JSON.stringify(data.longDescription))
       }
 
-      if (data.inStock !== undefined) {
-        var bInStock = data.inStock === true ? 1 : 0
-        setParts.push('inStock = ?')
-        values.push(bInStock)
-      }
-      if (data.bestseller !== undefined) {
-        var bBestseller = data.bestseller === true ? 1 : 0
-        setParts.push('bestseller = ?')
-        values.push(bBestseller)
-      }
-      if (data.newArrival !== undefined) {
-        var bNewArrival = data.newArrival === true ? 1 : 0
-        setParts.push('newArrival = ?')
-        values.push(bNewArrival)
-      }
-      if (data.featured !== undefined) {
-        var bFeatured = data.featured === true ? 1 : 0
-        setParts.push('featured = ?')
-        values.push(bFeatured)
-      }
-      if (data.showInNecklaces !== undefined) {
-        var bShowInNecklaces = data.showInNecklaces === true ? 1 : 0
-        setParts.push('showInNecklaces = ?')
-        values.push(bShowInNecklaces)
-      }
-      if (data.showInBangles !== undefined) {
-        var bShowInBangles = data.showInBangles === true ? 1 : 0
-        setParts.push('showInBangles = ?')
-        values.push(bShowInBangles)
-      }
-      if (data.showInUnder1000 !== undefined) {
-        var bShowInUnder1000 = data.showInUnder1000 === true ? 1 : 0
-        setParts.push('showInUnder1000 = ?')
-        values.push(bShowInUnder1000)
-      }
-      if (data.showInKundan !== undefined) {
-        var bShowInKundan = data.showInKundan === true ? 1 : 0
-        setParts.push('showInKundan = ?')
-        values.push(bShowInKundan)
-      }
-      if (data.showInBridalSet !== undefined) {
-        var bShowInBridalSet = data.showInBridalSet === true ? 1 : 0
-        setParts.push('showInBridalSet = ?')
-        values.push(bShowInBridalSet)
-      }
-      // ✅ NEW
-      if (data.showInPartyWear !== undefined) {
-        var bShowInPartyWear = data.showInPartyWear === true ? 1 : 0
-        setParts.push('showInPartyWear = ?')
-        values.push(bShowInPartyWear)
+      var boolFields = [
+        'inStock', 'bestseller', 'newArrival', 'featured',
+        'showInNecklaces', 'showInBangles', 'showInUnder1000',
+        'showInKundan', 'showInBridalSet', 'showInPartyWear',
+        'isGoldProduct', 'showInGold',
+      ]
+
+      for (var bi = 0; bi < boolFields.length; bi++) {
+        var bf = boolFields[bi]
+        if (data[bf] !== undefined) {
+          setParts.push(bf + ' = ?')
+          values.push(data[bf] === true ? 1 : 0)
+        }
       }
 
       if (setParts.length === 0) return this.findById(id)
@@ -321,8 +306,9 @@ var productModel = {
       var sql        = 'SELECT COUNT(*) as count FROM products'
       var params     = []
       var conditions = []
-      if (query.category)        { conditions.push('category = ?'); params.push(query.category) }
-      if (query.inStock === true)  conditions.push('inStock = 1')
+      if (query.category)           { conditions.push('category = ?');    params.push(query.category) }
+      if (query.inStock === true)     conditions.push('inStock = 1')
+      if (query.isGoldProduct === true) conditions.push('isGoldProduct = 1')
       if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ')
       var result = await pool.query(sql, params)
       return result[0][0].count

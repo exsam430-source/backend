@@ -141,8 +141,13 @@ var addProduct = async function (req, res) {
       showInUnder1000: parseBool(req.body.showInUnder1000),
       showInKundan:    parseBool(req.body.showInKundan),
       showInBridalSet: parseBool(req.body.showInBridalSet),
-      // ✅ NEW
       showInPartyWear: parseBool(req.body.showInPartyWear),
+      isGoldProduct:   parseBool(req.body.isGoldProduct),
+      goldKarat:       req.body.goldKarat       || '',
+      goldWeightGrams: Number(req.body.goldWeightGrams) || 0,
+      makingCharges:   Number(req.body.makingCharges)   || 0,
+      stoneCost:       Number(req.body.stoneCost)       || 0,
+      showInGold:      parseBool(req.body.showInGold),
     }
 
     var product = await productModel.create(productData)
@@ -171,27 +176,28 @@ var updateProduct = async function (req, res) {
 
     var textFields = [
       'name', 'description', 'category', 'subCategory',
-      'material', 'weight', 'stoneType', 'stoneColor', 'sku',
+      'material', 'weight', 'stoneType', 'stoneColor', 'sku', 'goldKarat',
     ]
     textFields.forEach(function (f) {
       if (req.body[f] !== undefined) updateData[f] = req.body[f]
     })
 
-    if (req.body.price         !== undefined) updateData.price         = Number(req.body.price)         || 0
-    if (req.body.comparePrice  !== undefined) updateData.comparePrice  = Number(req.body.comparePrice)  || 0
-    if (req.body.stockQuantity !== undefined) updateData.stockQuantity = Number(req.body.stockQuantity) || 0
+    if (req.body.price           !== undefined) updateData.price           = Number(req.body.price)           || 0
+    if (req.body.comparePrice    !== undefined) updateData.comparePrice    = Number(req.body.comparePrice)    || 0
+    if (req.body.stockQuantity   !== undefined) updateData.stockQuantity   = Number(req.body.stockQuantity)   || 0
+    if (req.body.goldWeightGrams !== undefined) updateData.goldWeightGrams = Number(req.body.goldWeightGrams) || 0
+    if (req.body.makingCharges   !== undefined) updateData.makingCharges   = Number(req.body.makingCharges)   || 0
+    if (req.body.stoneCost       !== undefined) updateData.stoneCost       = Number(req.body.stoneCost)       || 0
 
-    if (req.body.inStock         !== undefined) updateData.inStock         = parseBool(req.body.inStock)
-    if (req.body.bestseller      !== undefined) updateData.bestseller      = parseBool(req.body.bestseller)
-    if (req.body.newArrival      !== undefined) updateData.newArrival      = parseBool(req.body.newArrival)
-    if (req.body.featured        !== undefined) updateData.featured        = parseBool(req.body.featured)
-    if (req.body.showInNecklaces !== undefined) updateData.showInNecklaces = parseBool(req.body.showInNecklaces)
-    if (req.body.showInBangles   !== undefined) updateData.showInBangles   = parseBool(req.body.showInBangles)
-    if (req.body.showInUnder1000 !== undefined) updateData.showInUnder1000 = parseBool(req.body.showInUnder1000)
-    if (req.body.showInKundan    !== undefined) updateData.showInKundan    = parseBool(req.body.showInKundan)
-    if (req.body.showInBridalSet !== undefined) updateData.showInBridalSet = parseBool(req.body.showInBridalSet)
-    // ✅ NEW
-    if (req.body.showInPartyWear !== undefined) updateData.showInPartyWear = parseBool(req.body.showInPartyWear)
+    var boolFields = [
+      'inStock', 'bestseller', 'newArrival', 'featured',
+      'showInNecklaces', 'showInBangles', 'showInUnder1000',
+      'showInKundan', 'showInBridalSet', 'showInPartyWear',
+      'isGoldProduct', 'showInGold',
+    ]
+    boolFields.forEach(function (f) {
+      if (req.body[f] !== undefined) updateData[f] = parseBool(req.body[f])
+    })
 
     if (req.body.sizes)           updateData.sizes           = parseJSONField(req.body.sizes,           [])
     if (req.body.colors)          updateData.colors          = parseJSONField(req.body.colors,          [])
@@ -381,13 +387,13 @@ var getPageProducts = async function (req, res) {
     var page  = req.query.page
     var query = {}
 
-    if      (page === 'necklaces')     query.showInNecklaces = true
-    else if (page === 'bangles')       query.showInBangles   = true
-    else if (page === 'under1000')     query.showInUnder1000 = true
-    else if (page === 'kundan')        query.showInKundan    = true
-    else if (page === 'bridalset')     query.showInBridalSet = true
-    // ✅ NEW
-    else if (page === 'partywear')     query.showInPartyWear = true
+    if      (page === 'necklaces')    query.showInNecklaces = true
+    else if (page === 'bangles')      query.showInBangles   = true
+    else if (page === 'under1000')    query.showInUnder1000 = true
+    else if (page === 'kundan')       query.showInKundan    = true
+    else if (page === 'bridalset')    query.showInBridalSet = true
+    else if (page === 'partywear')    query.showInPartyWear = true
+    else if (page === 'gold')         query.isGoldProduct   = true
 
     var products = await productModel.find(query)
     return res.json({ success: true, products: products })
